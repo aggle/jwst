@@ -33,6 +33,9 @@ extract_1d
 - Clean the logging statements made by `extract_1d` to make the log
   more useful [#6696]
 
+- Check for non-zero array size before computing sigma-clipped
+  statistics in IFU mode [#6728]
+
 ramp_fitting
 ------------
 
@@ -40,6 +43,12 @@ ramp_fitting
   the various flavors of variance and ERR stored in the output
   products [#6715]
 
+srctype
+-------
+
+- Add command line option to override source type [#6720]
+
+  
 1.4.3 (2022-02-03)
 ==================
 
