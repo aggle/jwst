@@ -4,9 +4,10 @@ Association Pools
 
 from pkg_resources import parse_version, get_distribution
 
-from astropy.io.ascii import convert_numpy
+from collections import UserDict
 
-from astropy.table import Table
+from astropy.io.ascii import convert_numpy
+from astropy.table import Row, Table
 
 __all__ = ['AssociationPool']
 
@@ -23,6 +24,9 @@ class AssociationPool(Table):
     - ASCII tables with a default delimiter of `|`
     - All values are read in as strings
     """
+    def __init__(self, *args, **kwargs):
+        super(AssociationPool, self).__init__(*args, **kwargs)
+        self.meta['pool_file'] = self.meta.get('pool_file', 'in-memory')
 
     @classmethod
     def read(
@@ -102,6 +106,20 @@ class AssociationPool(Table):
             super(AssociationPool, self).write(
                 *args, format=format, **kwargs
             )
+
+class PoolRow(UserDict):
+    """A row from an AssociationPool
+
+    Class to create a copy of an AssociationPool row without copying
+    all of the astropy.Table.Row private attributes.
+    """
+    def __init__(self, init=None):
+        dict_init = dict(init)
+        super().__init__(dict_init)
+        try:
+            self.meta = init.meta
+        except AttributeError:
+            self.meta = dict()
 
 
 def _convert_to_str():

@@ -1,8 +1,87 @@
-1.4.4 (unreleased)
+1.5.2 (unreleased)
+==================
+
+
+1.5.1 (2022-05-17)
+==================
+
+cube_build
+----------
+
+- Fix for residual spectral tearing in MIRI MRS multiband cubes [#6786]
+
+dark_current
+------------
+
+- Eliminated extra copying of input model when step gets skipped [#6841]
+
+datamodels
+----------
+
+- Update keyword comments/titles for V2_REF, V3_REF, FITXOFFS, FITYOFFS [#6822]
+
+extract_1d
+----------
+
+- Fix bug in SOSS algorithm for bad data by replacing source of possible
+  infinite values with NaNs, caused by zero division [#6836]
+
+- Exit gracefully if data is with F277W filter; avoid masking entire wavemap
+  if subarray is SUBSTRIP96 [#6840]
+
+jump
+----
+- Enable multiprocessing in jump detection [#6845]
+
+lib
+---
+
+- Update ``test_siafdb`` unit test due to recent SIAF DB update [#6842]
+
+linearity
+---------
+
+- Adding feature to process ZEROFRAME data with the linearity step. [#6782]
+
+ramp_fitting
+----------
+
+- Adding feature to use ZEROFRAME for ramps that are fully saturated, but
+  the ZEROFRAME data for that ramp is good. [#6782]
+
+refpix
+------
+
+- Adding feature to process ZEROFRAME data with the refpix step. [#6782]
+
+saturation
+----------
+
+- Adding feature to process ZEROFRAME data with the saturation step. [#6782]
+
+stpipe
+------
+
+- Log the CRDS context for pipeline and standalone step processing [#6835]
+
+superbias
+---------
+
+- Adding feature to process ZEROFRAME data with the superbias step. [#6782]
+
+tweakreg
+--------
+
+- Changed default value of ``fitgeom`` from ``'general'`` to ``'rshift'``
+  at the request of CalWG. [#6838]
+
+1.5.0 (2022-05-05)
 ==================
 
 associations
 ------------
+
+- Implement PoolRow to avoid deep copy of the AssociationPool table [#6787]
 
 - Added valid optical paths for NRS_LAMP observations to generate
   or exclude associations using lamp, disperser and detector [#6695]
@@ -12,20 +91,95 @@ associations
 
 - Add constraint on NIRCam TSGRISM exposures, preventing level 2 and 3
   associations for detector NRCBLONG [#6709]
-  
+
 - Add fgsid option to set_telescope_pointing [#6717]
+
+- Formalize the mkpool utility [#6746]
 
 align_refs
 ----------
+
 - Fixed behavior generating many unnecessary and slow logging warnings on
   MIRI coronagraphy data, due to large contiguous regions of NON_SCIENCE
   pixels [#6722]
 
+ami
+---
+
+- Allow AmiAverageStep to be run on list in command line interface [#6797]
+
+assign_wcs
+----------
+
+- Corrected computation of crpix by backward transform of fiducial, allow
+  for reference outside of detector frame [#6789]
+
+- Fixed parsing the ``filteroffset`` file which resulted in the offset
+  not being used by the WCS. [#6831]
+
+- Fixed assignment of ``wcs.bounding_box`` in MIRI, NIRISS and NIRCAM imaging mode. [#6831]
+
+background
+----------
+
+- Added the step parameter ``wfss_mmag_extract`` to allow for setting the
+  minimum magnitude of source catalog objects to be used in the WFSS
+  background subtraction process [#6788]
+
+- Added a check to make sure that a sufficient number of background
+  (source-free) pixels are available in a WFSS image before attempting
+  to compute statistics and scale the WFSS background reference image
+  [#6788]
 
 cube_build
 ----------
 
-- Fixed a bug in how the dq plane of NIRspec data is set [#6718]
+- Fixed a bug in how the DQ plane of NIRSpec data is set [#6718]
+
+- Use drizzle weight function by default instead of EMSM. [#6820]
+
+- Fix bug for internal_cal cubes produces by move to drizzle default. [#6826]
+
+- Fix bug for Single type cubes called by mrs_imatch using drizzle. [#6827]
+
+cube_skymatch
+-------------
+
+- Enabled support for mnemonic DQ codes in the ``cube_skymatch`` step.
+  [#6733, #6736]
+
+datamodels
+----------
+
+- Added the new keyword "BKGMETH" for use in the ``skymatch`` step.
+  [#6736]
+
+- Drop references to transform-1.2.0 from datamodel schemas to prevent
+  issues with schema features not supported by stdatamodels. [#6752]
+
+- Remove FILETYPE keyword from core schema, and all assignments to it [#6772]
+
+- Update rscd model to increase the size of group_skip_table to allow FASTR1, SLOWR1, FASTR100 [#6776]
+
+- Correcting the default ZEROFRAME allocation. [#6791]
+
+- Add the new MIRI MRS point source correction reference file data model
+  MirMrsPtCorrModel. [#6762]
+
+- Add new datamodel and schema for MIRI MRS cross-artifact reference file
+  MirMrsXArtCorrModel [#6800]
+
+- Create MSA_TARG_ACQ table extension schema [#6757]
+
+- Added selector keywords ``readpatt`` and ``preadpatt`` to MIRI flat schema. [#6825]
+
+documentation
+-------------
+
+- Added documentation for processing NIRSpec lamp mode data in Spec2Pipeline
+  description [#6812]
+
+- Document parameter reference files in the same manor as other references [#6806]
 
 extract_1d
 ----------
@@ -36,6 +190,62 @@ extract_1d
 - Check for non-zero array size before computing sigma-clipped
   statistics in IFU mode [#6728]
 
+- Propagate non-differentiated errors for IFU mode observations [#6732]
+
+- Remove temporary `soss_atoca` parameter and make ATOCA the default
+  algorithm for SOSS data [#6734]
+
+- Add separate behavior for 2D vs (3D data with only one image)
+  by passing appropriate integ value [#6745]
+
+- Allow reference files to specify extraction region for extended
+  sources, modify `bkg_fit` default to None while retaining `poly`
+  as default mode [#6793]
+
+flatfield
+---------
+
+- Change DQ flags for NIRSpec flatfield where one or more component flats
+  (fflat, dflat, sflat) is bad (#6794)
+
+general
+-------
+
+- Added aliases to all steps, following step_defs naming conventions [#6740]
+
+- Require scikit-image as a dependency (for source catalog deblending).
+  [#6816]
+
+lib
+---
+
+- Updated default suffix names for RampFit and GuiderCDS steps to
+  'ramp_fit' and 'guider_cds' to match alias convention [#6740]
+
+mrs_imatch
+----------
+
+- Use drizzle weight function by default instead of EMSM. [#6820]
+
+photom
+------
+
+- Allow SOSS input as MultiSpecModel, and do correction on extracted 1d
+  spectra [#6734]
+
+pipeline
+--------
+
+- Improve memory performance of `calwebb_detector1` pipeline [#6758]
+
+- Update the `calwebb_spec2` pipeline to allow for the creation of an
+  optional WFSS product that's in units of e-/sec [#6783]
+
+- Updated `calwebb_spec2`, `calwebb_spec3`, and `calwebb_tso3` to reorder
+  step processing for SOSS data - `photom` now comes after `extract_1d` [#6734]
+
+- Added ResetStep back into `calwebb_dark` for MIRI exposures [#6798]
+
 ramp_fitting
 ------------
 
@@ -43,12 +253,131 @@ ramp_fitting
   the various flavors of variance and ERR stored in the output
   products [#6715]
 
+- Adding feature to turn off calculations of ramps with good 0th group,
+  but all other groups are saturated. [#6737]
+
+- Fix for handling jumps in the first good group following dropped groups.
+  [spacetelescope/stcal#84]
+
+regtest
+-------
+
+- Added a residual fringe correction test [#6771]
+
+resample
+--------
+
+- Fixed ``resample_spec`` output spectrum centering issue for MIRI LRS
+  fixed-slit. [#6777]
+
+- Re-designed algorithm for computation of the output WCS for the
+  ``resemple_spec`` step for ``NIRSpec`` data. [#6747, #6780]
+
+- Fixed handling of user-supplied ``weight_type`` parameter value for
+  ``resample_spec``. [#6796]
+
+- Fixed an issue with axis number for the spectral axis in ``resample_spec``. [#6802]
+
+reset
+-----
+
+- Fix bug in how segemented data is corrected [#6784]
+
+residual_fringe
+---------------
+
+- Replaced fitting the background with an astropy fitting package [#6739]
+
+saturation
+----------
+
+- Updated to allow the step to flag neighbors of saturated pixels, which is
+  controlled by the new step param ``n_pix_grow_sat``, to account for charge
+  migration. [spacetelescope/stcal#83] [#6818] [#6830]
+
+skymatch
+--------
+
+- Updated the step docs to clarify the details of the various global,
+  match, and global+match methods. [#6726]
+
+- Enabled support for mnemonic DQ codes in the ``skymatch`` step. Also
+  changed default value for ``dqbits`` from 0 (exclude ALL flagged in DQ
+  pixels) to ``'~DO_NOT_USE+NON_SCIENCE'``. [#6733, #6736]
+
+- Updated to populate the "BKGMETH" keyword in output files. [#6736]
+
+- Increased tolerance value for considering two sky polygons identical. [#6805]
+
+source_catalog
+--------------
+
+- Fixed the KDTree calculation to use only finite source positions to
+  prevent memory issues on Linux systems. [#6765]
+
+- Updated the roundness and sharpness properties to use the source
+  centroid position instead of the peak position. [#6766]
+
+- Updated the catalog metadata. [#6813]
+
 srctype
 -------
 
 - Add command line option to override source type [#6720]
 
-  
+tweakreg
+--------
+
+- Make ``fit_quality_is_good()`` member private and rename it to
+  ``_is_wcs_correction_small()``. [#6781]
+
+- Change default settings for ``searchrad``, ``tolerance``, and ``separation``
+  parameters for the ``tweakreg`` step. [#6809]
+
+- Change default value of ``brightest`` parameter in the ``tweakreg`` step. [#6810]
+
+
+1.4.6 (2022-03-25)
+==================
+
+set_telescope_pointing
+----------------------
+
+- Add option --force-level1bmodel. [#6778]
+
+1.4.5 (2022-03-23)
+==================
+
+datamodels
+----------
+
+- Updated reset model to include NINTS, NGROUPS keywords and the subarray.schema [#6749]
+
+- Update reset model to include keyword_preadpatt.schema [#6769]
+
+- Update rscd model to increase the size of group_skip_table to allow FASTR1, SLOWR1, FASTR100 [#6776]
+
+reset
+-----
+
+- Read NINTS and NGROUPS from model.meta for reset reference file and data instead of using the
+  shape of the data to define these values [#6749]
+
+1.4.4 (2022-03-16)
+==================
+
+set_telescope_pointing
+----------------------
+- Set CRVAL* from GS_* for guider exposures. [#6751]
+
+- Add fgsid option to set_telescope_pointing [#6717]
+
+- Further restrict default models that can be updated. [#6767]
+
+- Update COARSE handling of FGS, pysiaf importing, model opening,
+  and removal of stale code. [#6735]
+
+
 1.4.3 (2022-02-03)
 ==================
 
@@ -56,6 +385,7 @@ set_telescope_pointing
 ----------------------
 
 - JP-2509 Update COARSE algorithm to use FGS1 exclusively. [#6700]
+
 
 1.4.2 (2022-01-20)
 ==================
@@ -288,6 +618,9 @@ documentation
 -------------
 
 - Update text to point to the JWST CRDS website. [#6549]
+
+- Update to calwebb_detector documentation to include the reset step as one of the steps applied
+  to MIRI data [#6785]
 
 extract_1d
 ----------
@@ -826,6 +1159,11 @@ extract_2d
 - In NRC_TSGRISM mode replaced FITS WCS keywords with JWST specific ones. [#6005]
 
 - Added ``specsys`` to slits. [#6005]
+
+- Added the step parameter ``wfss_nbright`` to allow for only the N brightest
+  objects to be extracted from WFSS exposures. Also changed the name of the
+  ``mmag_extract`` param to ``wfss_mmag_extract``, for consistency with other
+  WFSS-specific params. [#6788]
 
 general
 -------
@@ -2173,6 +2511,7 @@ tweakreg
 --------
 
 - Updated step arguments in the documentation. [#4723]
+
 
 wfs_combine
 -----------

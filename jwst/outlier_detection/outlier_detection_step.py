@@ -41,6 +41,8 @@ class OutlierDetectionStep(Step):
 
     """
 
+    class_alias = "outlier_detection"
+
     # The members of spec needs to be a super-set of all parameters needed
     # by the various versions of the outlier_detection algorithms, and each
     # version will pick and choose what they need while ignoring the rest.
@@ -160,10 +162,8 @@ class OutlierDetectionStep(Step):
             if self.input_container:
                 for model in self.input_models:
                     model.meta.cal_step.outlier_detection = state
-                    model.meta.filetype = 'cosmic-ray flagged'
             else:
                 self.input_models.meta.cal_step.outlier_detection = state
-                self.input_models.meta.filetype = 'cosmic-ray flagged'
 
             return self.input_models
 

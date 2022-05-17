@@ -20,6 +20,7 @@ from astropy.nddata.bitmask import (
 from .skymatch import match
 from .skycube import SkyCube
 from ..skymatch.skystatistics import SkyStats
+from ..datamodels.dqflags import pixel
 
 __all__ = ['CubeSkyMatchStep']
 
@@ -29,6 +30,8 @@ class CubeSkyMatchStep(Step):
     SkyMatchStep: Subtraction or equalization of sky background in science images.
 
     """
+
+    class_alias = "cube_skymatch"
 
     spec = """
         # General sky matching parameters:
@@ -52,7 +55,7 @@ class CubeSkyMatchStep(Step):
     def process(self, input1, input2):
         cube_models = datamodels.ModelContainer(input1)
         models2d = datamodels.ModelContainer(input2)
-        dqbits = interpret_bit_flags(self.dqbits)
+        dqbits = interpret_bit_flags(self.dqbits, flag_name_map=pixel)
 
         # set sky statistics:
         self._skystat = SkyStats(
