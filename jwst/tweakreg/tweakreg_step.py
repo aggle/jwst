@@ -16,7 +16,7 @@ from tweakwcs.matchutils import TPMatch
 # LOCAL
 from ..stpipe import Step
 from .. import datamodels
-
+from ..assign_wcs.util import update_fits_wcsinfo
 from . import astrometric_utils as amutils
 from .tweakreg_catalog import make_tweakreg_catalog
 
@@ -207,7 +207,22 @@ class TweakRegStep(Step):
                 for model in images:
                     model.meta.cal_step.tweakreg = "SKIPPED"
                 return images
+            else:
+                raise e
 
+        except RuntimeError as e:
+            msg = e.args[0]
+            if msg.startswith("Number of output coordinates exceeded allocation"):
+                # we need at least two exposures to perform image alignment
+                self.log.error(msg)
+                self.log.error("Multiple sources within specified tolerance "
+                               "matched to a single reference source. Try to "
+                               "adjust 'tolerance' and/or 'separation' parameters.")
+                self.log.warning("Skipping 'TweakRegStep'...")
+                self.skip = True
+                for model in images:
+                    model.meta.cal_step.tweakreg = "SKIPPED"
+                return images
             else:
                 raise e
 
@@ -304,16 +319,15 @@ class TweakRegStep(Step):
 
                 imcat.meta['image_model'].meta.wcs = imcat.wcs
 
-                """
                 # Also update FITS representation in input exposures for
                 # subsequent reprocessing by the end-user.
-                # Not currently enabled, but may be requested later...
-                gwcs_header = imcat.wcs.to_fits_sip(max_pix_error=0.1,
-                                                max_inv_pix_error=0.1,
-                                                degree=3,
-                                                npoints=128)
-                imcat.meta['image_model'].wcs = wcs.WCS(header=gwcs_header)
-                """
+                try:
+                    update_fits_wcsinfo(imcat.meta['image_model'])
+                except (ValueError, RuntimeError) as e:
+                    self.log.warning(
+                        "Failed to update 'meta.wcsinfo' with FITS SIP "
+                        f'approximation. Reported error is:\n"{e.args[0]}"'
+                    )
 
         return images
 

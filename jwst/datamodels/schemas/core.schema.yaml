@@ -92,6 +92,10 @@ properties:
         type: number
         fits_keyword: NWFSEST
         blend_table: True
+      compress:
+        title: On-board data compression was used (T/F)
+        type: boolean
+        fits_keyword: COMPRESS
       asn:
         title: Association information
         type: object
@@ -547,7 +551,8 @@ properties:
             title: Lamp operating mode
             type: string
             default: 'NONE'
-            enum: [BRIGHTOBJ, FIXEDSLIT, GRATING-ONLY, IFU, MSASPEC, IMAGE, 'NONE']
+            enum: [BRIGHTOBJ, FIXEDSLIT, GRATING-ONLY, IFU, IMAGE, MSASPEC,
+              'NONE', ANY, N/A]
             fits_keyword: OPMODE
             blend_table: True
           gwa_xtilt:
@@ -639,7 +644,7 @@ properties:
             fits_keyword: EXP_TYPE
             blend_table: True
           start_time:
-            title: UTC exposure start time
+            title: "[d] exposure start time in MJD"
             type: number
             fits_keyword: EXPSTART
             blend_table: True
@@ -652,7 +657,7 @@ properties:
             blend_table: True
             blend_rule: min
           mid_time:
-            title: UTC exposure mid time
+            title: "[d] exposure mid time in MJD"
             type: number
             fits_keyword: EXPMID
             blend_table: True
@@ -665,7 +670,7 @@ properties:
             blend_table: True
             blend_rule: mean
           end_time:
-            title: UTC exposure end time
+            title: "[d] exposure end time in MJD"
             type: number
             fits_keyword: EXPEND
             blend_table: True
@@ -793,12 +798,12 @@ properties:
             fits_keyword: GROUPGAP
             blend_table: True
           drop_frames1:
-            title: Frames dropped at start of each integration
+            title: Frames dropped prior to first integration
             type: integer
             fits_keyword: DRPFRMS1
             blend_table: True
           drop_frames3:
-            title: Frames dropped at end of each integration
+            title: Frames dropped between integrations
             type: integer
             fits_keyword: DRPFRMS3
             blend_table: True
@@ -1094,7 +1099,7 @@ properties:
               7x3-PIXEL-MAP-SLITLESS, 9x3-8x4-SCAN-MAPS-SLITLESS,
 
               # MIRI MRS
-              2-POINT, 4-POINT,
+              2-POINT, 4-POINT, SCAN-CALIBRATION,
 
               # NIRCam
               FULL, FULLBOX, FULL-TIGHT,
@@ -1143,7 +1148,7 @@ properties:
             fits_keyword: PRIDTPTS
             blend_table: True
           position_number:
-            title: Position number in primary pattern
+            title: Position number within dither pattern
             type: integer
             fits_keyword: PATT_NUM
             blend_table: True
@@ -1291,7 +1296,7 @@ properties:
             fits_hdu: SCI
             blend_table: True
           time:
-            title: UTC time of position and velocity vectors in ephemeris (MJD)
+            title: "[d] MJD time of position and velocity vectors"
             type: number
             fits_keyword: EPH_TIME
             fits_hdu: SCI
@@ -1406,17 +1411,17 @@ properties:
             fits_keyword: BARTDELT
             blend_table: True
           barycentric_expstart:
-            title: Barycentric exposure start time
+            title: "[d] Barycentric exposure start time in MJD"
             type: number
             fits_keyword: BSTRTIME
             blend_table: True
           barycentric_expend:
-            title: Barycentric exposure end time
+            title: "[d] Barycentric exposure end time in MJD"
             type: number
             fits_keyword: BENDTIME
             blend_table: True
           barycentric_expmid:
-            title: Barycentric exposure mid time
+            title: "[d] Barycentric exposure mid time in MJD"
             type: number
             fits_keyword: BMIDTIME
             blend_table: True
@@ -1426,17 +1431,17 @@ properties:
             fits_keyword: HELIDELT
             blend_table: True
           heliocentric_expstart:
-            title: Heliocentric exposure start time
+            title: "[d] Heliocentric exposure start time in MJD"
             type: number
             fits_keyword: HSTRTIME
             blend_table: True
           heliocentric_expend:
-            title: Heliocentric exposure end time
+            title: "[d] Heliocentric exposure end time in MJD"
             type: number
             fits_keyword: HENDTIME
             blend_table: True
           heliocentric_expmid:
-            title: Heliocentric exposure mid time
+            title: "[d] Heliocentric exposure mid time in MJD"
             type: number
             fits_keyword: HMIDTIME
             blend_table: True

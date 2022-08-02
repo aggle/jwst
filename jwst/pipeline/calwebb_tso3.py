@@ -163,16 +163,18 @@ class Tso3Pipeline(Pipeline):
                 self.log.info("Extracting 1-D spectra ...")
                 result = self.extract_1d(cube)
 
-                if input_exptype == 'NIS_SOSS':
-                    # SOSS data have yet to be photometrically calibrated
-                    # Calibrate 1D spectra here.
-                    result = self.photom(result)
+                # SOSS F277W may return None - don't bother with that
+                if result is not None:
+                    if input_exptype == 'NIS_SOSS':
+                        # SOSS data have yet to be photometrically calibrated
+                        # Calibrate 1D spectra here.
+                        result = self.photom(result)
 
-                x1d_result.spec.extend(result.spec)
+                    x1d_result.spec.extend(result.spec)
 
-                # perform white-light photometry on 1d extracted data
-                self.log.info("Performing white-light photometry ...")
-                phot_result_list.append(self.white_light(result))
+                    # perform white-light photometry on 1d extracted data
+                    self.log.info("Performing white-light photometry ...")
+                    phot_result_list.append(self.white_light(result))
 
             # Update some metadata from the association
             x1d_result.meta.asn.pool_name = input_models.meta.asn_table.asn_pool
@@ -185,7 +187,8 @@ class Tso3Pipeline(Pipeline):
         input_models.close()
 
         # Check for all null photometry results before saving
-        if phot_result_list.count(None) == len(phot_result_list):
+        all_none = np.all([(x is None) for x in phot_result_list])
+        if all_none:
             self.log.warning("Could not create a photometric catalog; all results are null")
         else:
             # Otherwise, save results to a photometry catalog file

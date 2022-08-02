@@ -130,14 +130,15 @@ def ifu_extract1d(input_model, ref_dict, source_type, subtract_background,
     npixels_bkg_temp = np.where(npixels_bkg > 0., npixels_bkg, 1.)
 
     # Convert the sum to an average, for surface brightness.
+    # Remember variance requires dividing by N^2
     surf_bright = temp_flux / npixels_temp
-    sb_var_poisson = f_var_poisson / npixels_temp
-    sb_var_rnoise = f_var_rnoise / npixels_temp
-    sb_var_flat = f_var_flat / npixels_temp
-    background /= npixels_bkg_temp
-    b_var_poisson /= npixels_bkg_temp
-    b_var_rnoise /= npixels_bkg_temp
-    b_var_flat /= npixels_bkg_temp
+    sb_var_poisson = f_var_poisson / npixels_temp / npixels_temp
+    sb_var_rnoise = f_var_rnoise / npixels_temp / npixels_temp
+    sb_var_flat = f_var_flat / npixels_temp / npixels_temp
+    background = background / npixels_bkg_temp
+    b_var_poisson = b_var_poisson / npixels_bkg_temp / npixels_bkg_temp
+    b_var_rnoise = b_var_rnoise / npixels_bkg_temp / npixels_bkg_temp
+    b_var_flat = b_var_flat / npixels_bkg_temp / npixels_bkg_temp
 
     del npixels_temp
     del npixels_bkg_temp
@@ -573,7 +574,13 @@ def extract_ifu(input_model, source_type, extract_params):
                                          method=method, subpixels=subpixels)
 
         aperture_area = float(phot_table['aperture_sum'][0])
+        # if aperture_area = 0, then there is no valid data for this wavelength
+        # set the DQ flag to DO_NOT_USE
+        if aperture_area == 0:
+            dq[k] = dqflags.pixel['DO_NOT_USE']
 
+        # There is no valid data for this region. To prevent the code from
+        # crashing set aperture_area to a nonzero value. It will have the dq flag
         if(aperture_area == 0 and aperture.area > 0):
             aperture_area = aperture.area
 
@@ -594,6 +601,7 @@ def extract_ifu(input_model, source_type, extract_params):
                 subtract_background_plane = False
 
         npixels[k] = aperture_area
+
         npixels_bkg[k] = 0.0
         if annulus is not None:
             npixels_bkg[k] = annulus_area

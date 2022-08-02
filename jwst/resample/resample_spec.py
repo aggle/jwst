@@ -43,7 +43,7 @@ class ResampleSpecData(ResampleData):
     """
 
     def __init__(self, input_models, output=None, single=False, blendheaders=False,
-                 pixfrac=1.0, kernel="square", fillval=0, weight_type="ivm",
+                 pixfrac=1.0, kernel="square", fillval=0, wht_type="ivm",
                  good_bits=0, pscale_ratio=1.0, pscale=None, **kwargs):
         """
         Parameters
@@ -67,8 +67,9 @@ class ResampleSpecData(ResampleData):
         self.pixfrac = pixfrac
         self.kernel = kernel
         self.fillval = fillval
-        self.weight_type = weight_type
+        self.weight_type = wht_type
         self.good_bits = good_bits
+        self.in_memory = kwargs.get('in_memory', True)
 
         # Define output WCS based on all inputs, including a reference WCS
         if resample_utils.is_sky_like(self.input_models[0].meta.wcs.output_frame):
@@ -82,6 +83,11 @@ class ResampleSpecData(ResampleData):
         self.blank_output.update(self.input_models[0])
         self.blank_output.meta.wcs = self.output_wcs
         self.output_models = datamodels.ModelContainer()
+
+        log.info(f"Driz parameter kernal: {self.kernel}")
+        log.info(f"Driz parameter pixfrac: {self.pixfrac}")
+        log.info(f"Driz parameter fillval: {self.fillval}")
+        log.info(f"Driz parameter weight_type: {self.weight_type}")
 
     def build_nirspec_output_wcs(self, refmodel=None):
         """
@@ -651,18 +657,23 @@ def _spherical_sep(j, k, wcs, xyz_ref):
     return 1 - np.dot(_S2C(ra, dec), xyz_ref)
 
 
-def _find_nirspec_output_sampling_wavelengths(wcs_list, targ_ra, targ_dec, fast=True):
+def _find_nirspec_output_sampling_wavelengths(wcs_list, targ_ra, targ_dec, mode='median'):
+    assert mode in ['median', 'fast', 'accurate']
     refwcs = wcs_list[0]
     bbox = refwcs.bounding_box
 
     grid = wcstools.grid_from_bounding_box(bbox)
-    ra, dec, lam = np.array(refwcs(*grid))
+    ra, dec, lambdas = refwcs(*grid)
 
-    ref_lam, _, _ = _find_nirspec_sampling_wavelengths(
-        refwcs,
-        targ_ra, targ_dec,
-        ra, dec
-    )
+    if mode == 'median':
+        ref_lam = np.nanmedian(lambdas[:, np.any(np.isfinite(lambdas), axis=0)], axis=0).tolist()
+    else:
+        ref_lam, _, _ = _find_nirspec_sampling_wavelengths(
+            refwcs,
+            targ_ra, targ_dec,
+            ra, dec,
+            fast=mode == 'fast'
+        )
 
     lam1 = ref_lam[0]
     lam2 = ref_lam[-1]
@@ -671,12 +682,16 @@ def _find_nirspec_output_sampling_wavelengths(wcs_list, targ_ra, targ_dec, fast=
     for w in wcs_list[1:]:
         bbox = w.bounding_box
         grid = wcstools.grid_from_bounding_box(bbox)
-        ra, dec, _ = w(*grid)
-        lam, _, _ = _find_nirspec_sampling_wavelengths(
-            w,
-            targ_ra, targ_dec,
-            ra, dec
-        )
+        ra, dec, lambdas = w(*grid)
+        if mode == 'median':
+            lam = np.nanmedian(lambdas[:, np.any(np.isfinite(lambdas), axis=0)], axis=0).tolist()
+        else:
+            lam, _, _ = _find_nirspec_sampling_wavelengths(
+                w,
+                targ_ra, targ_dec,
+                ra, dec,
+                fast=mode == 'fast'
+            )
         image_lam.append((lam, np.min(lam), np.max(lam)))
 
     # The code below is optimized for the case when wavelength is an increasing
