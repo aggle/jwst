@@ -95,11 +95,11 @@ def _niriss_order_bounding_box(input_model, order):
     bbox_x = np.array([-0.5, input_model.meta.subarray.xsize - 0.5])
 
     if order == 1:
-        return (tuple(bbox_y), tuple(bbox_x))
+        return tuple(bbox_y), tuple(bbox_x)
     elif order == 2:
-        return (tuple(bbox_y), tuple(bbox_x))
+        return tuple(bbox_y), tuple(bbox_x)
     elif order == 3:
-        return (tuple(bbox_y), tuple(bbox_x))
+        return tuple(bbox_y), tuple(bbox_x)
     else:
         raise ValueError(f'Invalid spectral order: {order} provided. Spectral order must be 1, 2, or 3.')
 
@@ -341,7 +341,7 @@ def wfss(input_model, reference_files):
     -----
     reference_files = {
         "specwcs": 'GR150C_F090W.asdf'
-        "distortion": 'NRCA1_FULL_distortion.asdf'
+        "distortion": 'NIRISS_FULL_distortion.asdf'
         }
 
     The tree in the grism reference file has a section for each order/beam as
@@ -424,13 +424,13 @@ def wfss(input_model, reference_files):
                                                   lmodels=displ,
                                                   xmodels=dispx,
                                                   ymodels=dispy,
-                                                  theta=fwcpos_ref - fwcpos)
+                                                  theta=fwcpos - fwcpos_ref)
     elif input_model.meta.instrument.filter.endswith('R'):
         det2det = NIRISSForwardColumnGrismDispersion(orders,
                                                      lmodels=displ,
                                                      xmodels=dispx,
                                                      ymodels=dispy,
-                                                     theta=fwcpos_ref - fwcpos)
+                                                     theta=fwcpos - fwcpos_ref)
     else:
         raise ValueError("FILTER keyword {} is not valid."
                          .format(input_model.meta.instrument.filter))
@@ -439,7 +439,7 @@ def wfss(input_model, reference_files):
                                              lmodels=invdispl,
                                              xmodels=dispx,
                                              ymodels=dispy,
-                                             theta=fwcpos_ref - fwcpos)
+                                             theta=-(fwcpos - fwcpos_ref))
     det2det.inverse = backward
 
     # Add in the wavelength shift from the velocity dispersion

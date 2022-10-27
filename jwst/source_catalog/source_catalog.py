@@ -111,8 +111,8 @@ class JWSTSourceCatalog:
         `~astropy.unit.Quantity` objects.
         """
         in_unit = 'MJy/sr'
-        if (self.model.meta.bunit_data != in_unit
-                or self.model.meta.bunit_err != in_unit):
+        if (self.model.meta.bunit_data != in_unit or
+                self.model.meta.bunit_err != in_unit):
             raise ValueError('data and err are expected to be in units of '
                              'MJy/sr')
 
@@ -124,6 +124,22 @@ class JWSTSourceCatalog:
         self.model.err <<= unit
         self.model.meta.bunit_data = unit.name
         self.model.meta.bunit_err = unit.name
+
+    def convert_from_jy(self):
+        """
+        Convert the data and errors from Jy to MJy/sr and change from
+        `~astropy.unit.Quantity` objects to `~numpy.ndarray`.
+        """
+
+        to_mjy_sr = 1.e6 * self.model.meta.photometry.pixelarea_steradians
+        self.model.data /= to_mjy_sr
+        self.model.err /= to_mjy_sr
+
+        self.model.data = self.model.data.value  # remove units
+        self.model.err = self.model.err.value  # remove units
+
+        self.model.meta.bunit_data = 'MJy/sr'
+        self.model.meta.bunit_err = 'MJy/sr'
 
     @staticmethod
     def convert_flux_to_abmag(flux, flux_err):
@@ -554,7 +570,7 @@ class JWSTSourceCatalog:
         The EE indices for the concentration indices.
         """
         # NOTE: the EE values are always in increasing order
-        return ((0, 1), (1, 2), (0, 2))
+        return (0, 1), (1, 2), (0, 2)
 
     @lazyproperty
     def ci_colnames(self):
@@ -650,8 +666,7 @@ class JWSTSourceCatalog:
         # normalize the kernel to zero sum
         npixels = self._kernel_mask.sum()
         denom = np.sum(kernel**2) - (np.sum(kernel)**2 / npixels)
-        return (((kernel - (kernel.sum() / npixels)) / denom)
-                * self._kernel_mask)
+        return ((kernel - (kernel.sum() / npixels)) / denom) * self._kernel_mask
 
     @lazyproperty
     def _daofind_convolved_data(self):
@@ -917,8 +932,8 @@ class JWSTSourceCatalog:
                 catalog[colname].info.format = '.4f'
             if 'flux' in colname:
                 catalog[colname].info.format = '.6e'
-            if ('abmag' in colname or 'vegamag' in colname
-                    or colname in ('nn_dist', 'sharpness', 'roundness')):
+            if ('abmag' in colname or 'vegamag' in colname or
+                    colname in ('nn_dist', 'sharpness', 'roundness')):
                 catalog[colname].info.format = '.6f'
             if colname in ('semimajor_sigma', 'semiminor_sigma',
                            'ellipticity', 'orientation', 'sky_orientation'):
@@ -948,5 +963,8 @@ class JWSTSourceCatalog:
         self.meta['aperture_params'] = self.aperture_params
         self.meta['abvega_offset'] = self.abvega_offset
         catalog.meta.update(self.meta)
+
+        # reset units on input model back to MJy/sr
+        self.convert_from_jy()
 
         return catalog

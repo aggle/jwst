@@ -20,7 +20,7 @@ def makemodel_ccode(fimg, xvec, imin, imax, lor_fwhm, lor_amp, g_fwhm, g_dx, g1_
 
     fuse = fimg.copy()
     badval = np.where(fuse < 0.)
-    if (len(badval[0]) > 0):
+    if len(badval[0]) > 0:
         fuse[badval] = 0.
     fuse1d = fuse.ravel()
 
@@ -46,7 +46,7 @@ def makemodel_composite(fimg, xvec, imin, imax, lor_fwhm, lor_amp, g_fwhm, g_dx,
 
     fuse = fimg.copy()
     badval = np.where(fuse < 0.)
-    if (len(badval[0]) > 0):
+    if len(badval[0]) > 0:
         fuse[badval] = 0.
     fuse1d = fuse.ravel()
 
@@ -129,21 +129,21 @@ def correct_xartifact(input_model, modelpars):
     # Deal with normal cases only, we won't apply to cross-dichroic cases for now
     left, right = 'N/A', 'N/A'
 
-    if ((channel == '12') & (band == 'SHORT')):
+    if channel == '12' and band == 'SHORT':
         left, right = 'ch1a_table', 'ch2a_table'
-    if ((channel == '12') & (band == 'MEDIUM')):
+    if channel == '12' and band == 'MEDIUM':
         left, right = 'ch1b_table', 'ch2b_table'
-    if ((channel == '12') & (band == 'LONG')):
+    if channel == '12' and band == 'LONG':
         left, right = 'ch1c_table', 'ch2c_table'
-    if ((channel == '34') & (band == 'SHORT')):
+    if channel == '34' and band == 'SHORT':
         left, right = 'ch4a_table', 'ch3a_table'
-    if ((channel == '34') & (band == 'MEDIUM')):
+    if channel == '34' and band == 'MEDIUM':
         left, right = 'ch4b_table', 'ch3b_table'
-    if ((channel == '34') & (band == 'LONG')):
+    if channel == '34' and band == 'LONG':
         left, right = 'ch4c_table', 'ch3c_table'
 
     # Catch failure cases with a log warning
-    if ((left == 'N/A') or (right == 'N/A')):
+    if left == 'N/A' or right == 'N/A':
         log.info("Warning: no parameters found for channel = " + str(channel) + " band = " + str(band))
 
     xvec = (np.arange(ncols)).astype(float)
@@ -181,6 +181,18 @@ def correct_xartifact(input_model, modelpars):
     model[:, 1028:1032] = 0.0
     model[:, 0:4] = 0.0
     output.data = output.data - model
+
+    # Remove any remaining pedestal stray light values based on inter-channel region
+    # chosen based on analysis of multiple bands of data from various programs
+    if (channel == '12'):
+        pedestal = np.nanmedian(output.data[280:740, 503:516])
+    else:
+        pedestal = np.nanmedian(output.data[280:740, 474:507])
+    try:
+        output.data = output.data - pedestal
+        log.info("Derived pedestal correction " + str(pedestal) + " DN/s")
+    except Exception:
+        log.info("Straylight pedestal correction failed.")
 
     log.info("Cross-artifact model complete.")
     return output

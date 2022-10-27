@@ -341,7 +341,15 @@ def count_input(input_spectra):
 
     # Create an array with all the input wavelengths (i.e. the union
     # of the input wavelengths).
-    wl = np.hstack([in_spec.wavelength for in_spec in input_spectra])
+    wl = None
+    for in_spec in input_spectra:
+        input_wl = in_spec.wavelength
+        # only include spectra that have more than 1 data point
+        if len(input_wl) > 1:
+            if wl is None:
+                wl = input_wl
+            else:
+                wl = np.hstack((input_wl, wl))
     wl.sort()
     nwl = len(wl)
 
@@ -378,7 +386,7 @@ def count_input(input_spectra):
     if np.any(n_input_spectra <= 0.):
         raise RuntimeError("Problem with input wavelengths.")
 
-    return (wl, n_input_spectra)
+    return wl, n_input_spectra
 
 
 def compute_output_wl(wl, n_input_spectra):

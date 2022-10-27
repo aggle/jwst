@@ -97,7 +97,7 @@ class Observation:
             log.info(f"Loading {len(all_IDs)} sources from segmentation map")
             for ID in all_IDs:
                 ys, xs = np.nonzero(self.seg == ID)
-                if (len(xs) > 0) & (len(ys) > 0):
+                if len(xs) > 0 and len(ys) > 0:
                     self.xs.append(xs)
                     self.ys.append(ys)
 
@@ -105,7 +105,7 @@ class Observation:
             # Process only the given source ID
             log.info(f"Loading source {self.ID} from segmentation map")
             ys, xs = np.nonzero(self.seg == self.ID)
-            if (len(xs) > 0) & (len(ys) > 0):
+            if len(xs) > 0 and len(ys) > 0:
                 self.xs = [xs]
                 self.ys = [ys]
                 self.IDs = [self.ID]
@@ -170,7 +170,7 @@ class Observation:
             self.cached_object = {}
 
         # Initialize the simulated dispersed image
-        self.simulated_image = np.zeros(self.dims, np.float)
+        self.simulated_image = np.zeros(self.dims, float)
 
         # Loop over all source ID's from segmentation map
         for i in range(len(self.IDs)):
@@ -265,7 +265,7 @@ class Observation:
                 all_res.append(dispersed_pixel(*pars[i]))
 
         # Initialize blank image for this source
-        this_object = np.zeros(self.dims, np.float)
+        this_object = np.zeros(self.dims, float)
 
         nres = 0
         for pp in all_res:
@@ -309,7 +309,7 @@ class Observation:
         if not self.cache:
             return
 
-        self.simulated_image = np.zeros(self.dims, np.float)
+        self.simulated_image = np.zeros(self.dims, float)
 
         for i in range(len(self.IDs)):
             this_object = self.disperse_chunk_from_cache(i, trans=trans)
@@ -325,7 +325,7 @@ class Observation:
         time1 = time.time()
 
         # Initialize blank image for this object
-        this_object = np.zeros(self.dims, np.float)
+        this_object = np.zeros(self.dims, float)
 
         if trans is not None:
             log.debug("Applying a transmission function...")

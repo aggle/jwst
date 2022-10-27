@@ -5,6 +5,7 @@
 [![Documentation Status](https://readthedocs.org/projects/jwst-pipeline/badge/?version=latest)](http://jwst-pipeline.readthedocs.io/en/latest/?badge=latest)
 [![Powered by STScI Badge](https://img.shields.io/badge/powered%20by-STScI-blue.svg?colorA=707170&colorB=3e8ddd&style=flat)](http://www.stsci.edu)
 [![Powered by Astropy Badge](http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat)](http://www.astropy.org/)
+[![DOI](https://zenodo.org/badge/60551519.svg)](https://zenodo.org/badge/latestdoi/60551519)
 
 ![STScI Logo](docs/_static/stsci_logo.png)
 
@@ -179,7 +180,7 @@ To setup to use JWST PUB, use the following settings:
 
     export CRDS_PATH=<locally-accessable-path>/crds_cache/jwst_pub
     export CRDS_SERVER_URL=https://jwst-crds-pub.stsci.edu
-    
+
 ``<locally-accessable-path>`` can be any the user has permissions to use, such as `$HOME`.
 Expect to use upwards of 200GB of disk space to cache the latest couple of contexts.
 
@@ -214,6 +215,9 @@ contact the [JWST Help Desk](https://jwsthelp.stsci.edu).
 
 | jwst tag            | DMS build | CRDS_CONTEXT<br>(JWST OPS) | CRDS_CONTEXT<br>(JWST PUB) | Date       | Notes                                         |
 |---------------------|-----------|----------------------------|----------------------------|------------|-----------------------------------------------|
+| 1.7.2               | B8.1.2rc3 | N/A                        | 0950                       | 2022-09-12 | Final release candidate for B8.1.2            |
+| 1.7.1               | B8.1.2rc2 | N/A                        | 0950                       | 2022-09-07 | Second release candidate for B8.1.2           |
+| 1.7.0               | B8.1.2rc1 | N/A                        | 0950                       | 2022-09-01 | First release candidate for B8.1.2            |
 | 1.6.2               | B8.1rc3   | N/A                        | 0930                       | 2022-07-19 | Third release candidate for B8.1              |
 | 1.6.1               | B8.1rc2   | N/A                        | 0927                       | 2022-07-15 | Second release candidate for B8.1             |
 | 1.6.0               | B8.1rc1   | N/A                        | 0916                       | 2022-07-11 | First release candidate for B8.1              |
@@ -284,7 +288,7 @@ Note: CRDS_CONTEXT values of "N/A" mean that the release is not in operations an
 Note: **CRDS PUB did not exist at the 1.3.3 release or before. All previous contexts between PUB and OPS are identical.
 
 For a specific release, the context listed is a minimum context that can be used with that release. A release should work with any contexts between
-the specified context and less than the context for the next release. 
+the specified context and less than the context for the next release.
 
 ## Unit Tests
 

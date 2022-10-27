@@ -110,6 +110,10 @@ properties:
             type: string
             fits_keyword: ASNTABLE
             blend_table: True
+          exptype:
+            title: Exposure type provided for this exposure in the association
+            type: string
+            default: 'science'
       program:
         title: Program information
         type: object
@@ -1049,7 +1053,7 @@ properties:
               INTRASCA, SUBARRAY_DITHER, WFSC, AMI, IMAGING, MIMF, WFSS,
 
               # MIRI coron
-              5-POINT-SMALL-GRID, 9-POINT-SMALL-GRID,
+              5-POINT-SMALL-GRID, 9-POINT-SMALL-GRID, BACKGROUND,
               LFLAT_CORON1065, LFLAT_CORON1140, LFLAT_CORON1550, LFLAT_CORONLYOT,
               PFLAT_CORON1065, PFLAT_CORON1140, PFLAT_CORON1550, PFLAT_CORONLYOT,
 
@@ -1848,6 +1852,15 @@ properties:
                 type: string
                 fits_keyword: R_FRINGE
                 blend_table: True
+          fringefreq:
+            title: Fringe Frequency reference file information
+            type: object
+            properties:
+              name:
+                title: Fringe Frequency reference file name
+                type: string
+                fits_keyword: R_FRIFRQ
+                blend_table: True
           gain:
             title: Gain reference file information
             type: object
@@ -2365,6 +2378,11 @@ properties:
             title: Image resampling
             type: string
             fits_keyword: S_RESAMP
+            blend_table: True
+          residual_fringe:
+            title: Residual fringe Correction
+            type: string
+            fits_keyword: S_RESFRI
             blend_table: True
           reset:
             title: Reset Anomaly Correction

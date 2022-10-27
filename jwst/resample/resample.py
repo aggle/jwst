@@ -1,5 +1,4 @@
 import logging
-import re
 
 import numpy as np
 from drizzle import util
@@ -55,9 +54,15 @@ class ResampleData:
 
             .. note::
                 ``output_shape`` is in the ``x, y`` order.
+
+            .. note::
+                ``in_memory`` controls whether or not the resampled
+                array from ``resample_many_to_many()``
+                should be kept in memory or written out to disk and
+                deleted from memory. Default value is `True` to keep
+                all products in memory.
         """
         self.input_models = input_models
-
         self.output_filename = output
         self.pscale_ratio = pscale_ratio
         self.single = single
@@ -81,7 +86,10 @@ class ResampleData:
         rotation = kwargs.get('rotation', None)
 
         if pscale is not None:
+            log.info(f'Output pixel scale: {pscale} arcsec.')
             pscale /= 3600.0
+        else:
+            log.info(f'Output pixel scale ratio: {pscale_ratio}')
 
         # Define output WCS based on all inputs, including a reference WCS
         self.output_wcs = resample_utils.make_output_wcs(
@@ -219,15 +227,16 @@ class ResampleData:
         self.resample_variance_array("var_rnoise", output_model)
         self.resample_variance_array("var_poisson", output_model)
         self.resample_variance_array("var_flat", output_model)
-        output_model.err = np.sqrt(output_model.var_rnoise + output_model.var_poisson
-                                   + output_model.var_flat)
-
-        # TODO: The following two methods and calls should be moved upstream to
-        # ResampleStep and ResampleSpecStep respectively
-        if isinstance(output_model, datamodels.ImageModel):
-            self.update_fits_wcs(output_model)
-        if isinstance(output_model, datamodels.SlitModel):
-            self.update_slit_metadata(output_model)
+        output_model.err = np.sqrt(
+            np.nansum(
+                [
+                    output_model.var_rnoise,
+                    output_model.var_poisson,
+                    output_model.var_flat
+                ],
+                axis=0
+            )
+        )
 
         self.update_exposure_times(output_model)
         self.output_models.append(output_model)
@@ -243,7 +252,7 @@ class ResampleData:
         This modifies output_model in-place.
         """
         output_wcs = output_model.meta.wcs
-        inverse_variance_sum = np.zeros_like(output_model.data)
+        inverse_variance_sum = np.full_like(output_model.data, np.nan)
 
         log.info(f"Resampling {name}")
         for model in self.input_models:
@@ -263,29 +272,35 @@ class ResampleData:
                 continue
 
             # Make input weight map of unity where there is science data
-            inwht = resample_utils.build_driz_weight(model, weight_type=None,
-                                                     good_bits="~NON_SCIENCE+REFERENCE_PIXEL")
+            inwht = resample_utils.build_driz_weight(
+                model,
+                weight_type=None,
+                good_bits="~NON_SCIENCE+REFERENCE_PIXEL"
+            )
 
             resampled_variance = np.zeros_like(output_model.data)
             outwht = np.zeros_like(output_model.data)
             outcon = np.zeros_like(output_model.con)
 
-            # Resample the variance array.  Use fillval=np.inf so that when we
-            # take the reciprocal for summing, it is zero where there is zero weight
+            # Resample the variance array. Fill "unpopulated" pixels with NaNs.
             self.drizzle_arrays(variance, inwht, model.meta.wcs,
                                 output_wcs, resampled_variance, outwht, outcon,
                                 pixfrac=self.pixfrac, kernel=self.kernel,
-                                fillval=np.inf)
+                                fillval=np.nan)
 
-            # Add the inverse of the resampled variance to a running sum
-            with np.errstate(divide="ignore"):
-                inverse_variance_sum += np.reciprocal(resampled_variance)
+            # Add the inverse of the resampled variance to a running sum.
+            # Update only pixels (in the running sum) with valid new values:
+            mask = resampled_variance > 0
+
+            inverse_variance_sum[mask] = np.nansum(
+                [inverse_variance_sum[mask], np.reciprocal(resampled_variance[mask])],
+                axis=0
+            )
 
         # We now have a sum of the inverse resampled variances.  We need the
         # inverse of that to get back to units of variance.
-        with np.errstate(divide="ignore"):
-            output_variance = np.reciprocal(inverse_variance_sum)
-        output_variance[~np.isfinite(output_variance)] = np.nan
+        output_variance = np.reciprocal(inverse_variance_sum)
+
         setattr(output_model, name, output_variance)
 
     def update_exposure_times(self, output_model):
@@ -411,7 +426,7 @@ class ResampleData:
         else:
             fillval = str(fillval)
 
-        if (insci.dtype > np.float32):
+        if insci.dtype > np.float32:
             insci = insci.astype(np.float32)
 
         # Add input weight image if it was not passed in
@@ -468,60 +483,3 @@ class ResampleData:
             wtscale=wtscale,
             fillstr=fillval
         )
-
-    def update_fits_wcs(self, model):
-        """
-        Update FITS WCS keywords of the resampled image.
-        """
-        # Delete any SIP-related keywords first
-        pattern = r"^(cd[12]_[12]|[ab]p?_\d_\d|[ab]p?_order)$"
-        regex = re.compile(pattern)
-
-        keys = list(model.meta.wcsinfo.instance.keys())
-        for key in keys:
-            if regex.match(key):
-                del model.meta.wcsinfo.instance[key]
-
-        # Write new PC-matrix-based WCS based on GWCS model
-        transform = model.meta.wcs.forward_transform
-        model.meta.wcsinfo.crpix1 = -transform[0].offset.value + 1
-        model.meta.wcsinfo.crpix2 = -transform[1].offset.value + 1
-        model.meta.wcsinfo.cdelt1 = transform[3].factor.value
-        model.meta.wcsinfo.cdelt2 = transform[4].factor.value
-        model.meta.wcsinfo.ra_ref = transform[6].lon.value
-        model.meta.wcsinfo.dec_ref = transform[6].lat.value
-        model.meta.wcsinfo.crval1 = model.meta.wcsinfo.ra_ref
-        model.meta.wcsinfo.crval2 = model.meta.wcsinfo.dec_ref
-        model.meta.wcsinfo.pc1_1 = transform[2].matrix.value[0][0]
-        model.meta.wcsinfo.pc1_2 = transform[2].matrix.value[0][1]
-        model.meta.wcsinfo.pc2_1 = transform[2].matrix.value[1][0]
-        model.meta.wcsinfo.pc2_2 = transform[2].matrix.value[1][1]
-        model.meta.wcsinfo.ctype1 = "RA---TAN"
-        model.meta.wcsinfo.ctype2 = "DEC--TAN"
-
-        # Remove no longer relevant WCS keywords
-        rm_keys = ['v2_ref', 'v3_ref', 'ra_ref', 'dec_ref', 'roll_ref',
-                   'v3yangle', 'vparity']
-        for key in rm_keys:
-            if key in model.meta.wcsinfo.instance:
-                del model.meta.wcsinfo.instance[key]
-
-    def update_slit_metadata(self, model):
-        """
-        Update slit attributes in the resampled slit image.
-
-        This is needed because model.slit attributes are not in model.meta, so
-        the normal update() method doesn't work with them. Updates output_model
-        in-place.
-        """
-        for attr in ['name', 'xstart', 'xsize', 'ystart', 'ysize',
-                     'slitlet_id', 'source_id', 'source_name', 'source_alias',
-                     'stellarity', 'source_type', 'source_xpos', 'source_ypos',
-                     'dispersion_direction', 'shutter_state']:
-            try:
-                val = getattr(self.input_models[-1], attr)
-            except AttributeError:
-                pass
-            else:
-                if val is not None:
-                    setattr(model, attr, val)

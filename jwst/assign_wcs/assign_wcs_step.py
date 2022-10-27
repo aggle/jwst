@@ -45,11 +45,11 @@ class AssignWcsStep(Step):
 
     spec = """
         sip_approx = boolean(default=True)  # enables SIP approximation for imaging modes.
-        sip_max_pix_error = float(default=0.25)  # max err for SIP fit, forward.
+        sip_max_pix_error = float(default=0.1)  # max err for SIP fit, forward.
         sip_degree = integer(max=6, default=None)  # degree for forward SIP fit, None to use best fit.
-        sip_max_inv_pix_error = float(default=0.25)  # max err for SIP fit, inverse.
+        sip_max_inv_pix_error = float(default=0.1)  # max err for SIP fit, inverse.
         sip_inv_degree = integer(max=6, default=None)  # degree for inverse SIP fit, None to use best fit.
-        sip_npoints = integer(default=32)  #  number of points for SIP
+        sip_npoints = integer(default=12)  #  number of points for SIP
         slit_y_low = float(default=-.55)  # The lower edge of a slit.
         slit_y_high = float(default=.55)  # The upper edge of a slit.
 
@@ -107,10 +107,8 @@ class AssignWcsStep(Step):
                 crpix=None
             )
 
-        except ValueError as e:
+        except (ValueError, RuntimeError) as e:
             log.warning("Failed to update 'meta.wcsinfo' with FITS SIP "
                         f'approximation. Reported error is:\n"{e.args[0]}"')
-
-            pass
 
         return result

@@ -5,22 +5,22 @@ import logging
 import numpy as np
 import os
 from pathlib import Path
-import sys
 from tempfile import TemporaryDirectory
 import warnings
 
 import pytest
+pytest.importorskip('pysiaf')
 
-from astropy.io import fits
-from astropy.time import Time
+from astropy.io import fits  # noqa: E402
+from astropy.time import Time  # noqa: E402
 
-from jwst import datamodels
-from jwst.lib import engdb_mast
-from jwst.lib import engdb_tools
-from jwst.lib import set_telescope_pointing as stp
-from jwst.lib import siafdb
-from jwst.lib.tests.engdb_mock import EngDB_Mocker
-from jwst.tests.helpers import word_precision_check
+from jwst import datamodels  # noqa: E402
+from jwst.lib import engdb_mast  # noqa: E402
+from jwst.lib import engdb_tools  # noqa: E402
+from jwst.lib import set_telescope_pointing as stp  # noqa: E402
+from jwst.lib import siafdb  # noqa: E402
+from jwst.lib.tests.engdb_mock import EngDB_Mocker  # noqa: E402
+from jwst.tests.helpers import word_precision_check  # noqa: E402
 
 # Ensure that `set_telescope_pointing` logs.
 stp.logger.setLevel(logging.DEBUG)
@@ -40,7 +40,7 @@ TARG_DEC = -87.0
 DATA_PATH = Path(__file__).parent / 'data'
 db_ngas_path = DATA_PATH / 'engdb_ngas'
 db_jw703_path = DATA_PATH / 'engdb_jw00703'
-siaf_path = DATA_PATH / 'siaf.db'
+siaf_path = DATA_PATH / 'xml_data_siafxml' / 'SIAFXML'
 
 # Some expected values
 Q_EXPECTED = np.asarray(
@@ -56,32 +56,32 @@ OBSTIME_EXPECTED = STARTTIME
 
 # Meta attributes for test comparisons
 METAS_EQUALITY = ['meta.visit.engdb_pointing_quality',
-                  'meta.pointing.ra_v1',
-                  'meta.pointing.dec_v1',
-                  'meta.pointing.pa_v3',
                   'meta.wcsinfo.wcsaxes',
-                  'meta.wcsinfo.crpix1',
-                  'meta.wcsinfo.crpix2',
-                  'meta.wcsinfo.crval1',
-                  'meta.wcsinfo.crval2',
                   'meta.wcsinfo.ctype1',
                   'meta.wcsinfo.ctype2',
                   'meta.wcsinfo.cunit1',
                   'meta.wcsinfo.cunit2',
-                  'meta.wcsinfo.v2_ref',
-                  'meta.wcsinfo.v3_ref',
                   'meta.wcsinfo.vparity',
-                  'meta.wcsinfo.v3yangle',
-                  'meta.wcsinfo.ra_ref',
-                  'meta.wcsinfo.dec_ref',
                   ]
-METAS_ISCLOSE = ['meta.wcsinfo.cdelt1',
+METAS_ISCLOSE = ['meta.wcsinfo.crpix1',
+                 'meta.wcsinfo.crpix2',
+                 'meta.wcsinfo.crval1',
+                 'meta.wcsinfo.crval2',
+                 'meta.wcsinfo.cdelt1',
                  'meta.wcsinfo.cdelt2',
                  'meta.wcsinfo.pc1_1',
                  'meta.wcsinfo.pc1_2',
                  'meta.wcsinfo.pc2_1',
                  'meta.wcsinfo.pc2_2',
                  'meta.wcsinfo.roll_ref',
+                 'meta.wcsinfo.v2_ref',
+                 'meta.wcsinfo.v3_ref',
+                 'meta.wcsinfo.v3yangle',
+                 'meta.wcsinfo.ra_ref',
+                 'meta.wcsinfo.dec_ref',
+                 'meta.pointing.ra_v1',
+                 'meta.pointing.dec_v1',
+                 'meta.pointing.pa_v3',
                  ]
 
 
@@ -161,7 +161,7 @@ def test_override_calc_wcs():
 
     assert vinfo_new != vinfo
     assert all(np.isclose(vinfo_new,
-                          stp.WCSRef(ra=32.50407337171124, dec=17.161233048951043, pa=352.28553015159287)))
+                          stp.WCSRef(ra=32.504066294908846, dec=17.16116653015435, pa=352.2757851954435)))
 
 
 @pytest.mark.parametrize(
@@ -297,7 +297,11 @@ def test_pointing_averaging(eng_db_jw703):
 
 def test_get_pointing_fail():
     with pytest.raises(Exception):
-        q, j2fgs_matrix, fmscorr, obstime, gs_commanded = stp.get_pointing(47892.0, 48256.0)
+        (q,
+         j2fgs_matrix,
+         fmscorr,
+         obstime,
+         gs_commanded) = stp.get_pointing(47892.0, 48256.0)
 
 
 def test_get_pointing(eng_db_ngas):
@@ -361,8 +365,6 @@ def test_get_pointing_with_zeros(eng_db_ngas):
     assert np.array_equal(fsmcorr, fsmcorr_desired)
 
 
-@pytest.mark.skipif(sys.version_info.major < 3,
-                    reason="No URI support in sqlite3")
 def test_add_wcs_default(data_file, tmp_path):
     """Handle when no pointing exists and the default is used."""
     expected_name = 'add_wcs_default.fits'
@@ -403,8 +405,6 @@ def test_add_wcs_default_nosiaf(data_file_nosiaf, caplog):
         )
 
 
-@pytest.mark.skipif(sys.version_info.major < 3,
-                    reason="No URI support in sqlite3")
 def test_add_wcs_with_db(eng_db_ngas, data_file, tmp_path):
     """Test using the database"""
     expected_name = 'add_wcs_with_db.fits'
@@ -427,8 +427,6 @@ def test_add_wcs_with_db(eng_db_ngas, data_file, tmp_path):
             assert word_precision_check(model.meta.wcsinfo.s_region, expected.meta.wcsinfo.s_region)
 
 
-@pytest.mark.skipif(sys.version_info.major < 3,
-                    reason="No URI support in sqlite3")
 @pytest.mark.parametrize('fgsid', [1, 2])
 def test_add_wcs_with_mast(data_file_fromsim, fgsid, tmp_path):
     """Test using the database"""
@@ -455,7 +453,7 @@ def test_add_wcs_with_mast(data_file_fromsim, fgsid, tmp_path):
 
         with datamodels.open(DATA_PATH / expected_name) as expected:
             for meta in METAS_EQUALITY:
-                assert model[meta] == expected[meta]
+                assert model[meta] == expected[meta], f"{meta} is not equal"
 
             for meta in METAS_ISCLOSE:
                 assert np.isclose(model[meta], expected[meta])
@@ -489,14 +487,13 @@ def test_add_wcs_method_full_nosiafdb(eng_db_ngas, data_file, tmp_path):
             assert word_precision_check(model.meta.wcsinfo.s_region, expected.meta.wcsinfo.s_region)
 
 
-@pytest.mark.skipif(sys.version_info.major < 3,
-                    reason="No URI support in sqlite3")
-def test_add_wcs_method_full_siafdb(eng_db_ngas, data_file, tmp_path):
+@pytest.mark.parametrize('source, prd', [(siaf_path, None), (None, 'prdopssoc-053')])
+def test_add_wcs_method_full_siafdb(eng_db_ngas, data_file, tmp_path, source, prd):
     """Test using the database and a specified siaf db"""
     expected_name = 'add_wcs_method_full_siafdb.fits'
 
     # Calculate
-    stp.add_wcs(data_file, siaf_path=siaf_path, method=stp.Methods.OPS_TR_202111, engdb_url='http://localhost')
+    stp.add_wcs(data_file, siaf_path=siaf_path, prd=prd, method=stp.Methods.OPS_TR_202111, engdb_url='http://localhost')
 
     # Test
     with datamodels.Level1bModel(data_file) as model:
@@ -532,8 +529,8 @@ def test_default_siaf_values(eng_db_ngas, data_file_nosiaf):
         stp.update_wcs(model, siaf_path=siaf_path, allow_default=False, engdb_url='http://localhost')
         assert model.meta.wcsinfo.crpix1 == 24.5
         assert model.meta.wcsinfo.crpix2 == 24.5
-        assert model.meta.wcsinfo.cdelt1 == 3.067124166666667e-05
-        assert model.meta.wcsinfo.cdelt2 == 3.090061944444444e-05
+        assert model.meta.wcsinfo.cdelt1 == 3.0693922222222226e-05
+        assert model.meta.wcsinfo.cdelt2 == 3.092664722222222e-05
 
 
 def test_tsgrism_siaf_values(eng_db_ngas, data_file_nosiaf):
@@ -548,7 +545,7 @@ def test_tsgrism_siaf_values(eng_db_ngas, data_file_nosiaf):
         model.meta.exposure.type = "NRC_TSGRISM"
         model.meta.visit.tsovisit = True
         stp.update_wcs(model, siaf_path=siaf_path, engdb_url='http://localhost')
-        assert model.meta.wcsinfo.siaf_xref_sci == 952
+        assert model.meta.wcsinfo.siaf_xref_sci == 858.0
         assert model.meta.wcsinfo.siaf_yref_sci == 35
 
 
@@ -648,10 +645,7 @@ def calc_coarse_202111_fgsid(request, tmp_path_factory):
     # Save transforms for later examination
     transforms.write_to_asdf(tmp_path_factory.mktemp('transforms') / f'tforms_{t_pars.method}{truth_ext}.asdf')
 
-    try:
-        return transforms, t_pars, truth_ext, fgs_expected
-    finally:
-        t_pars.siaf_db.close()
+    return transforms, t_pars, truth_ext, fgs_expected
 
 
 @pytest.fixture(scope='module',
@@ -670,10 +664,7 @@ def calc_transforms(request, tmp_path_factory):
     # Save transforms for later examination
     transforms.write_to_asdf(tmp_path_factory.mktemp('transforms') / f'tforms_{request.param}.asdf')
 
-    try:
-        return transforms, t_pars
-    finally:
-        t_pars.siaf_db.close()
+    return transforms, t_pars
 
 
 @pytest.fixture

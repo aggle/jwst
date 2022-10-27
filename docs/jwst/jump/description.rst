@@ -34,7 +34,7 @@ output PIXELDQ array.
 The SCI and ERR arrays of the input data are not modified.
 
 The current implementation uses the two-point difference method described
-in Anderson&Gordon2011_.
+in `Anderson & Gordon (2011) <https://ui.adsabs.harvard.edu/abs/2011PASP..123.1237A>`_.
 
 Two-Point Difference Method
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -59,6 +59,15 @@ The two-point difference method is applied to each integration as follows:
   is used rather than the clipped median.
 * If there are only two differences (three groups), the smallest one is compared to the larger
   one and if the larger one is above a threshold, it is flagged as a jump.
+
+* If flagging of the 4 neighbors is requested, then the 4 adjacent pixels will
+  have ramp jumps flagged in the same group as the central pixel as long as it has
+  a jump between the min and max requested levels for this option.
+
+* If flagging of groups after a ramp jump is requested, then the groups in the
+  requested time since a detected ramp jump will be flagged as ramp jumps if
+  the ramp jump is above the requested threshold.  Two thresholds and times are
+  possible for this option.
 
 Note that any ramp values flagged as SATURATED in the input GROUPDQ array
 are not used in any of the above calculations and hence will never be
@@ -88,4 +97,16 @@ files can be used for all science exposures, in which case subarrays will be
 extracted from the reference file data to match the science exposure, or
 subarray-specific reference files may be used.
 
-.. _Anderson&Gordon2011: https://ui.adsabs.harvard.edu/abs/2011PASP..123.1237A
+Large Events (Snowballs and Showers)
+====================================
+All the detectors on JWST are affected by large cosmic ray
+events. While these events, in general, affect a large number of
+pixels, the more distinguishing characteristic is that they are
+surrounded by a halo of pixels that have a low level of excess
+counts. These excess counts are, in general, below the detection
+threshold of normal cosmic rays.
+
+To constrain the effect of this halo the jump step will fit ellipses or circles that enclose the large events and expand the ellipses and circles by the input expansion_factor and mark them as jump.
+
+The two types of detectors respond differently. The large events in the near infrared detectors are almost always circles with a central region that is saturated. The saturated core allows the search for smaller events without false positives.
+The MIRI detectors do not, in general, have a saturated center and are only rarely circular. Thus, we fit the minimum enclosing ellipse and do not require that there are saturated pixels within the ellipse.

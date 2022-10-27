@@ -1,4 +1,5 @@
 import logging
+import re
 
 import numpy as np
 
@@ -66,6 +67,8 @@ class ResampleStep(Step):
                 output = None
         else:
             input_models = datamodels.ModelContainer([input])
+            input_models.asn_pool_name = input.meta.asn.pool_name
+            input_models.asn_table_name = input.meta.asn.table_name
             output = input.meta.filename
             self.blendheaders = False
 
@@ -74,18 +77,19 @@ class ResampleStep(Step):
             # resample can only handle 2D images, not 3D cubes, etc
             raise RuntimeError("Input {} is not a 2D image.".format(input_models[0]))
 
-        # Get drizzle parameters reference file
+        #  Get drizzle parameters reference file, if there is one
         self.wht_type = self.weight_type
-        for reftype in self.reference_file_types:
-            ref_filename = self.get_reference_file(input_models[0], reftype)
+        if 'drizpars' in self.reference_file_types:
+            ref_filename = self.get_reference_file(input_models[0], 'drizpars')
+        else:  # no drizpars reference file found
+            ref_filename = 'N/A'
 
-        if ref_filename != 'N/A':
-            self.log.info('Drizpars reference file: {}'.format(ref_filename))
-            kwargs = self.get_drizpars(ref_filename, input_models)
-        else:
-            # If there is no drizpars reffile
-            self.log.info("No DRIZPARS reffile")
+        if ref_filename == 'N/A':
+            self.log.info('No drizpars reference file found.')
             kwargs = self._set_spec_defaults()
+        else:
+            self.log.info('Using drizpars reference file: {}'.format(ref_filename))
+            kwargs = self.get_drizpars(ref_filename, input_models)
 
         kwargs['allowed_memory'] = self.allowed_memory
 
@@ -103,6 +107,7 @@ class ResampleStep(Step):
         kwargs['crval'] = _check_list_pars(self.crval, 'crval')
         kwargs['rotation'] = self.rotation
         kwargs['pscale'] = self.pixel_scale
+        kwargs['pscale_ratio'] = self.pixel_scale_ratio
         kwargs['in_memory'] = self.in_memory
 
         # Call the resampling routine
@@ -111,10 +116,18 @@ class ResampleStep(Step):
 
         for model in result:
             model.meta.cal_step.resample = 'COMPLETE'
+            self.update_fits_wcs(model)
             util.update_s_region_imaging(model)
             model.meta.asn.pool_name = input_models.asn_pool_name
             model.meta.asn.table_name = input_models.asn_table_name
-            model.meta.resample.pixel_scale_ratio = self.pixel_scale_ratio
+
+            # if pixel_scale exists, it will override pixel_scale_ratio.
+            # calculate the actual value of pixel_scale_ratio based on pixel_scale
+            # because source_catalog uses this value from the header.
+            if not self.pixel_scale:
+                model.meta.resample.pixel_scale_ratio = self.pixel_scale_ratio
+            else:
+                model.meta.resample.pixel_scale_ratio = self.pixel_scale / np.sqrt(model.meta.photometry.pixelarea_arcsecsq)
             model.meta.resample.pixfrac = kwargs['pixfrac']
             self.update_phot_keywords(model)
 
@@ -127,9 +140,9 @@ class ResampleStep(Step):
     def update_phot_keywords(self, model):
         """Update pixel scale keywords"""
         if model.meta.photometry.pixelarea_steradians is not None:
-            model.meta.photometry.pixelarea_steradians *= self.pixel_scale_ratio**2
+            model.meta.photometry.pixelarea_steradians *= model.meta.resample.pixel_scale_ratio**2
         if model.meta.photometry.pixelarea_arcsecsq is not None:
-            model.meta.photometry.pixelarea_arcsecsq *= self.pixel_scale_ratio**2
+            model.meta.photometry.pixelarea_arcsecsq *= model.meta.resample.pixel_scale_ratio**2
 
     def get_drizpars(self, ref_filename, input_models):
         """
@@ -185,7 +198,7 @@ class ResampleStep(Step):
             pixfrac=self.pixfrac,
             kernel=self.kernel,
             fillval=self.fillval,
-            wht_type=self.wht_type
+            wht_type=self.weight_type
             # pscale_ratio=self.pixel_scale_ratio, # I think this can be removed JEM (??)
         )
 
@@ -255,6 +268,43 @@ class ResampleStep(Step):
                 log.info('  using: %s=%s', k, repr(v))
 
         return kwargs
+
+    def update_fits_wcs(self, model):
+        """
+        Update FITS WCS keywords of the resampled image.
+        """
+        # Delete any SIP-related keywords first
+        pattern = r"^(cd[12]_[12]|[ab]p?_\d_\d|[ab]p?_order)$"
+        regex = re.compile(pattern)
+
+        keys = list(model.meta.wcsinfo.instance.keys())
+        for key in keys:
+            if regex.match(key):
+                del model.meta.wcsinfo.instance[key]
+
+        # Write new PC-matrix-based WCS based on GWCS model
+        transform = model.meta.wcs.forward_transform
+        model.meta.wcsinfo.crpix1 = -transform[0].offset.value + 1
+        model.meta.wcsinfo.crpix2 = -transform[1].offset.value + 1
+        model.meta.wcsinfo.cdelt1 = transform[3].factor.value
+        model.meta.wcsinfo.cdelt2 = transform[4].factor.value
+        model.meta.wcsinfo.ra_ref = transform[6].lon.value
+        model.meta.wcsinfo.dec_ref = transform[6].lat.value
+        model.meta.wcsinfo.crval1 = model.meta.wcsinfo.ra_ref
+        model.meta.wcsinfo.crval2 = model.meta.wcsinfo.dec_ref
+        model.meta.wcsinfo.pc1_1 = transform[2].matrix.value[0][0]
+        model.meta.wcsinfo.pc1_2 = transform[2].matrix.value[0][1]
+        model.meta.wcsinfo.pc2_1 = transform[2].matrix.value[1][0]
+        model.meta.wcsinfo.pc2_2 = transform[2].matrix.value[1][1]
+        model.meta.wcsinfo.ctype1 = "RA---TAN"
+        model.meta.wcsinfo.ctype2 = "DEC--TAN"
+
+        # Remove no longer relevant WCS keywords
+        rm_keys = ['v2_ref', 'v3_ref', 'ra_ref', 'dec_ref', 'roll_ref',
+                   'v3yangle', 'vparity']
+        for key in rm_keys:
+            if key in model.meta.wcsinfo.instance:
+                del model.meta.wcsinfo.instance[key]
 
 
 def _check_list_pars(vals, name, min_vals=None):

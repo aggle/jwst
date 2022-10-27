@@ -109,19 +109,20 @@ class MasterBackgroundStep(Step):
                     asn_id = input_data.meta.asn_table.asn_id
 
                     for model in background_data:
-                        # Check if the background members are nodded x1d extractions.
-                        # Or background from dedicated background exposures
+                        # Check if the background members are nodded x1d extractions
+                        # or background from dedicated background exposures.
                         # Use "bkgdtarg == False" so we don't also get None cases
                         # for simulated data that didn't bother populating this
-                        # keyword
+                        # keyword.
                         this_is_ifu_extended = False
-                        if ((model.meta.exposure.type == 'MIR_MRS' or model.meta.exposure.type == 'NRS_IFU')
-                                and model.meta.target.source_type == 'EXTENDED'):
+                        if (model.meta.exposure.type == 'NRS_IFU' and model.spec[0].source_type == 'EXTENDED'):
+                            this_is_ifu_extended = True
+                        if (model.meta.exposure.type == 'MIR_MRS'):
+                            # always treat as extended for MIRI MRS
                             this_is_ifu_extended = True
 
                         if model.meta.observation.bkgdtarg is False or this_is_ifu_extended:
-                            self.log.debug("Copying BACKGROUND column "
-                                           "to SURF_BRIGHT")
+                            self.log.debug("Copying BACKGROUND column to SURF_BRIGHT")
                             copy_background_to_surf_bright(model)
 
                     master_background = combine_1d_spectra(
@@ -230,14 +231,15 @@ def split_container(container):
     """Divide a ModelContainer with science and background into one of each
     """
     asn = container.meta.asn_table.instance
+
     background = datamodels.ModelContainer()
     science = datamodels.ModelContainer()
-    for product in asn['products']:
-        for member in product['members']:
-            if member['exptype'].lower() == 'science':
-                science.append(datamodels.open(member['expname']))
-            if member['exptype'].lower() == 'background':
-                background.append(datamodels.open(member['expname']))
+
+    for ind_science in container.ind_asn_type('science'):
+        science.append(container._models[ind_science])
+
+    for ind_bkgd in container.ind_asn_type('background'):
+        background.append(container._models[ind_bkgd])
 
     # Pass along the association table to the output science container
     science.meta.asn_table = {}
